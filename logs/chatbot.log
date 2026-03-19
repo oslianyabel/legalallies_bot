@@ -1,0 +1,13 @@
+{"asctime": "2026-03-16T20:18:45", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 92, "message": "Started server process [15180]", "color_message": "Started server process [\u001b[36m%d\u001b[0m]"}
+{"asctime": "2026-03-16T20:18:45", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 48, "message": "Waiting for application startup."}
+{"asctime": "2026-03-16T20:18:45", "levelname": "INFO", "correlation_id": "-", "name": "chatbot.api.main", "lineno": 26, "message": "\ud83d\ude80 Starting App"}
+{"asctime": "2026-03-16T20:18:46", "levelname": "INFO", "correlation_id": "-", "name": "chatbot.api.main", "lineno": 28, "message": "\u2705 Connected to database"}
+{"asctime": "2026-03-16T20:19:12", "levelname": "INFO", "correlation_id": "-", "name": "chatbot.core.sentry", "lineno": 17, "message": "Sentry initialized"}
+{"asctime": "2026-03-16T20:19:12", "levelname": "INFO", "correlation_id": "-", "name": "chatbot.api.utils.filesystem", "lineno": 15, "message": "Directories ['static/images', 'static/documents', 'static/voice'] are ready"}
+{"asctime": "2026-03-16T20:19:12", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 62, "message": "Application startup complete."}
+{"asctime": "2026-03-16T20:19:12", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 224, "message": "Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)", "color_message": "Uvicorn running on \u001b[1m%s://%s:%d\u001b[0m (Press CTRL+C to quit)"}
+{"asctime": "2026-03-16T20:20:31", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 272, "message": "Shutting down"}
+{"asctime": "2026-03-16T20:20:31", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 67, "message": "Waiting for application shutdown."}
+{"asctime": "2026-03-16T20:20:31", "levelname": "INFO", "correlation_id": "-", "name": "chatbot.api.main", "lineno": 35, "message": "\u2705 Disconnected from database"}
+{"asctime": "2026-03-16T20:20:31", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 76, "message": "Application shutdown complete."}
+{"asctime": "2026-03-16T20:20:31", "levelname": "INFO", "correlation_id": "-", "name": "uvicorn.error", "lineno": 102, "message": "Finished server process [15180]", "color_message": "Finished server process [\u001b[36m%d\u001b[0m]"}
