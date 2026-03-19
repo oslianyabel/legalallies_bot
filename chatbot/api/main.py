@@ -36,8 +36,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Cheese Bot",
-    description="Bot de WhatsApp Cheese: +1 (555) 188-6623",
+    title="LegalAllies Bot",
+    description="Bot de WhatsApp LegalAllies: +1 (555) 188-6623",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -53,6 +53,11 @@ app.add_middleware(
 
 app.include_router(whatsapp_router, prefix="/whatsapp")
 app.include_router(chat_router)
+
+
+@app.get("/sentry-debug")
+async def trigger_error():
+    division_by_zero = 1 / 0
 
 
 @app.get("/health")
@@ -71,7 +76,7 @@ async def health_check():
 async def root():
     logger.info("Root")
     return {
-        "message": "Welcome to Cheese Bot",
+        "message": "Welcome to LegalAllies Bot",
         "version": "1.0.0",
         "docs": "/docs",
     }
