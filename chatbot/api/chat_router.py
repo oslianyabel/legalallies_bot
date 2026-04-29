@@ -10,7 +10,9 @@ from chatbot.api.utils.models import (
     User,
 )
 from chatbot.api.utils.security import get_api_key
+from chatbot.db.schema import PaymentStatus
 from chatbot.db.services import services
+from chatbot.messaging.whatsapp import whatsapp_manager
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_api_key)])
@@ -85,4 +87,17 @@ async def update_order_status(order_name: str, body: UpdateOrderStatusRequest):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order '{order_name}' not found",
         )
+
+    if body.status == PaymentStatus.CONFIRMED:
+        message = (
+            f"✅ ¡Tu pago ha sido confirmado!\n\n"
+            f"Tu orden *{order_name}* está activa. "
+            f"El equipo de Legal Allies ya tiene acceso a tu caso. "
+            f"En breve nos pondremos en contacto contigo. ¡Gracias por confiar en nosotros!"
+        )
+        await whatsapp_manager.send_text(order.user_phone, message)  # type: ignore[attr-defined]
+        logger.info(
+            f"Payment confirmation sent to {order.user_phone} for order {order_name}"
+        )  # type: ignore[attr-defined]
+
     return order
