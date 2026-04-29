@@ -16,7 +16,14 @@ from pydantic_ai.messages import (
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from chatbot.db.schema import init_db, message_table, users_table
+from chatbot.db.schema import (
+    PaymentStatus,
+    init_db,
+    message_table,
+    orders_table,
+    services_table,
+    users_table,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +229,174 @@ class Services:
     async def get_chat_str(self, phone: str) -> str:
         messages = await self.get_chat(phone)
         return json.dumps(messages)
+
+    # ── Services ──────────────────────────────────────────────────────────────
+
+    async def create_service(
+        self,
+        code: str,
+        name: str,
+        description: str,
+        price: float,
+        payment_link: str,
+        image: str | None = None,
+        active: bool = True,
+    ) -> bool:
+        data: dict = {
+            "code": code,
+            "name": name,
+            "description": description,
+            "price": price,
+            "payment_link": payment_link,
+            "active": active,
+        }
+        if image is not None:
+            data["image"] = image
+
+        query = services_table.insert().values(data)
+        if self.debug:
+            logger.debug(query)
+        try:
+            await self.database.execute(query)
+            logger.debug(f"Service {code} created")
+            return True
+        except asyncpg.exceptions.UniqueViolationError:
+            logger.warning(f"create_service: service {code!r} already exists")
+            return False
+
+    async def get_active_services(self) -> list:
+        query = services_table.select().where(services_table.c.active == True)  # noqa: E712
+        if self.debug:
+            logger.debug(query)
+        return await self.database.fetch_all(query)
+
+    async def update_service(self, service_code: str, **kwargs) -> bool:
+        if not kwargs:
+            logger.warning(f"update_service: no data provided for {service_code}")
+            return False
+        query = (
+            services_table.update()
+            .where(services_table.c.code == service_code)
+            .values(**kwargs)
+        )
+        if self.debug:
+            logger.debug(query)
+        try:
+            await self.database.execute(query)
+            logger.debug(f"Service {service_code} updated")
+            return True
+        except Exception as exc:
+            logger.error(f"update_service error: {exc}")
+            return False
+
+    # ── Orders ────────────────────────────────────────────────────────────────
+
+    async def _generate_order_name(self, service_code: str) -> str:
+        year_suffix = str(datetime.now().year)[-2:]
+        prefix = f"{service_code}{year_suffix}"
+        count_query = (
+            sqlalchemy.select(sqlalchemy.func.count())
+            .select_from(orders_table)
+            .where(orders_table.c.name.like(f"{prefix}%"))
+        )
+        count: int = await self.database.fetch_val(count_query) or 0
+        return f"{prefix}{count:04d}"
+
+    async def get_all_orders(self) -> list:
+        query = orders_table.select().order_by(orders_table.c.created_at.desc())
+        if self.debug:
+            logger.debug(query)
+        return await self.database.fetch_all(query)
+
+    async def get_order(self, order_name: str):
+        query = orders_table.select().where(orders_table.c.name == order_name)
+        if self.debug:
+            logger.debug(query)
+        return await self.database.fetch_one(query)
+
+    async def get_user_orders(self, phone: str) -> list:
+        query = (
+            orders_table.select()
+            .where(orders_table.c.user_phone == phone)
+            .order_by(orders_table.c.created_at.desc())
+        )
+        if self.debug:
+            logger.debug(query)
+        return await self.database.fetch_all(query)
+
+    async def create_order(
+        self,
+        service_code: str,
+        user_phone: str,
+        has_paid: bool = False,
+    ) -> str:
+        if not await self.get_user(user_phone):
+            await self.create_user(user_phone)
+
+        service = await self.database.fetch_one(
+            services_table.select().where(services_table.c.code == service_code)
+        )
+        if service is None:
+            raise ValueError(f"Service with code '{service_code}' not found")
+        amount_remaining: float = service.price  # type: ignore[attr-defined]
+
+        initial_status = PaymentStatus.PENDING if has_paid else PaymentStatus.NOT_PAID
+
+        for _ in range(5):
+            name = await self._generate_order_name(service_code)
+            data: dict = {
+                "name": name,
+                "service_code": service_code,
+                "user_phone": user_phone,
+                "payment_status": initial_status,
+                "amount_remaining": amount_remaining,
+            }
+
+            query = orders_table.insert().values(data)
+            if self.debug:
+                logger.debug(query)
+            try:
+                await self.database.execute(query)
+                logger.debug(f"Order {name} created for {user_phone}")
+                return name
+            except asyncpg.exceptions.UniqueViolationError:
+                logger.warning(f"create_order: name collision for {name}, retrying...")
+                continue
+
+        raise RuntimeError(
+            f"Could not generate unique order name for service_code={service_code}"
+        )
+
+    async def update_order_status(
+        self,
+        order_name: str,
+        status: PaymentStatus,
+        amount_remaining: float | None = None,
+    ) -> bool:
+        values: dict = {"payment_status": status}
+        if status == PaymentStatus.INCOMPLETE:
+            if amount_remaining is None:
+                raise ValueError(
+                    "amount_remaining is required when status is INCOMPLETE"
+                )
+            values["amount_remaining"] = amount_remaining
+        elif amount_remaining is not None:
+            values["amount_remaining"] = amount_remaining
+
+        query = (
+            orders_table.update()
+            .where(orders_table.c.name == order_name)
+            .values(**values)
+        )
+        if self.debug:
+            logger.debug(query)
+        try:
+            await self.database.execute(query)
+            logger.debug(f"Order {order_name} status updated to {status}")
+            return True
+        except Exception as exc:
+            logger.error(f"update_order_status error: {exc}")
+            return False
 
 
 database = init_db()

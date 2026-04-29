@@ -11,12 +11,27 @@ from chatbot.ai_agent.dependencies import AgentDeps
 from chatbot.ai_agent.models import GoogleModel
 from chatbot.ai_agent.prompts import SYSTEM_PROMPT
 from chatbot.ai_agent.tools.date_resolver import resolve_relative_date
+from chatbot.ai_agent.tools.services import (
+    confirm_payment,
+    create_order,
+    get_all_services,
+    get_order_by_name,
+    get_orders_by_user,
+)
 
 logger = logging.getLogger(__name__)
 ERP_TIMEOUT_SECONDS = 15.0
 
 
-AGENT_TOOLS = [resolve_relative_date, WebSearchTool]
+AGENT_TOOLS = [
+    resolve_relative_date,
+    WebSearchTool,
+    get_all_services,
+    create_order,
+    confirm_payment,
+    get_order_by_name,
+    get_orders_by_user,
+]
 
 
 # ---------------------------------------------------------------------------

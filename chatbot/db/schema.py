@@ -1,11 +1,31 @@
+import enum
 import logging
 import time
 
 import databases
 import sqlalchemy
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+)
 
 from chatbot.core.config import config
+
+
+class PaymentStatus(enum.Enum):
+    NOT_PAID = "NOT_PAID"
+    PENDING = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    REJECTED = "REJECTED"
+    INCOMPLETE = "INCOMPLETE"
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +55,35 @@ message_table = sqlalchemy.Table(
     sqlalchemy.Column("created_at", DateTime, default=func.now()),
 )
 
+services_table = sqlalchemy.Table(
+    "services",
+    metadata,
+    sqlalchemy.Column("code", String, primary_key=True),
+    sqlalchemy.Column("name", String, nullable=False, unique=True),
+    sqlalchemy.Column("description", Text, nullable=False),
+    sqlalchemy.Column("price", Float, nullable=False),
+    sqlalchemy.Column("payment_link", Text, nullable=False),
+    sqlalchemy.Column("image", Text, nullable=True),
+    sqlalchemy.Column("active", Boolean, default=True),
+    sqlalchemy.Column("created_at", DateTime, default=func.now()),
+)
+
+orders_table = sqlalchemy.Table(
+    "orders",
+    metadata,
+    sqlalchemy.Column("name", String, primary_key=True),
+    sqlalchemy.Column("service_code", ForeignKey("services.code"), nullable=False),
+    sqlalchemy.Column("user_phone", ForeignKey("users.phone"), nullable=False),
+    sqlalchemy.Column(
+        "payment_status",
+        Enum(PaymentStatus),
+        nullable=False,
+        default=PaymentStatus.NOT_PAID,
+    ),
+    sqlalchemy.Column("amount_remaining", Float, nullable=True),
+    sqlalchemy.Column("created_at", DateTime, default=func.now()),
+)
+
 # Database connection retry settings
 DB_MAX_RETRIES = 5
 DB_RETRY_DELAY = 3  # seconds
@@ -45,26 +94,34 @@ def init_db():
     # Fix for SQLAlchemy: postgres:// is not valid, must be postgresql://
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-    
-    logger.info(f"🔌 Initializing database connection to: {db_url.split('@')[1] if '@' in db_url else 'unknown'}")
-    
+
+    logger.info(
+        f"🔌 Initializing database connection to: {db_url.split('@')[1] if '@' in db_url else 'unknown'}"
+    )
+
     engine = sqlalchemy.create_engine(db_url)
-    
+
     # Retry logic for create_all (waits for DB to be ready)
     for attempt in range(1, DB_MAX_RETRIES + 1):
         try:
-            logger.info(f"🔄 Attempting to create tables (attempt {attempt}/{DB_MAX_RETRIES})...")
+            logger.info(
+                f"🔄 Attempting to create tables (attempt {attempt}/{DB_MAX_RETRIES})..."
+            )
             metadata.create_all(engine)
             logger.info("✅ Database tables created/verified successfully")
             break
         except Exception as exc:
-            logger.error(f"❌ Database connection failed (attempt {attempt}/{DB_MAX_RETRIES}): {exc}")
+            logger.error(
+                f"❌ Database connection failed (attempt {attempt}/{DB_MAX_RETRIES}): {exc}"
+            )
             if attempt < DB_MAX_RETRIES:
                 logger.info(f"⏳ Retrying in {DB_RETRY_DELAY} seconds...")
                 time.sleep(DB_RETRY_DELAY)
             else:
-                logger.error(f"💀 All {DB_MAX_RETRIES} database connection attempts failed")
+                logger.error(
+                    f"💀 All {DB_MAX_RETRIES} database connection attempts failed"
+                )
                 raise
-    
+
     database = databases.Database(db_url, force_rollback=False)
     return database

@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from chatbot.db.schema import PaymentStatus
+
 
 class User(BaseModel):
     phone: str
@@ -24,6 +26,32 @@ class Messages(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class Order(BaseModel):
+    name: str
+    service_code: str
+    user_phone: str
+    payment_status: PaymentStatus
+    amount_remaining: float | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CreateServiceRequest(BaseModel):
+    code: str
+    name: str
+    description: str
+    price: float
+    payment_link: str
+    image: str | None = None
+    active: bool = True
+
+
+class UpdateOrderStatusRequest(BaseModel):
+    status: PaymentStatus
+    amount_remaining: float | None = None
 
 
 class Statistics(BaseModel):
