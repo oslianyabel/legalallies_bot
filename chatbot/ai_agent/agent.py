@@ -19,6 +19,7 @@ from chatbot.ai_agent.tools.services import (
     get_orders_by_user,
     send_service_image,
 )
+from chatbot.ai_agent.tools.user_data import update_user_profile
 
 logger = logging.getLogger(__name__)
 ERP_TIMEOUT_SECONDS = 15.0
@@ -27,6 +28,7 @@ ERP_TIMEOUT_SECONDS = 15.0
 AGENT_TOOLS = [
     resolve_relative_date,
     WebSearchTool,
+    update_user_profile,
     get_all_services,
     send_service_image,
     create_order,
@@ -63,6 +65,21 @@ def get_legalallies_agent() -> Agent[AgentDeps, str]:
             return (
                 f"Fecha y hora actual: {now.strftime('%A %d de %B de %Y, %H:%M')} "
                 f"(zona horaria del servidor: {now.strftime('%Z %z')}). "
+            )
+
+        @_legalallies_agent.instructions
+        async def client_name_prompt(
+            ctx: RunContext[AgentDeps],
+        ) -> str:
+            user = await ctx.deps.db_services.get_user(ctx.deps.user_phone)
+            if user and user["name"]:
+                return (
+                    f"El nombre del cliente es '{user['name']}'. "
+                    f"Dirígete a él por su nombre en tus respuestas."
+                )
+            return (
+                "Aún no conoces el nombre del cliente. "
+                "Preséntate y pídele su nombre y email antes de procesar cualquier solicitud de servicio."
             )
 
         logger.info("Agent initialized with %d tools", len(AGENT_TOOLS))

@@ -19,7 +19,5 @@ class AgentDeps:
     db_services: Services
     whatsapp_client: WhatsAppManager
     user_phone: str = ""
-    user_name: str | None = None
-    user_email: str | None = None
     telegram_id: str | None = None
     called_tools: set[str] = field(default_factory=set)

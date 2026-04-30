@@ -86,7 +86,6 @@ def deps(erp_client: httpx.AsyncClient) -> AgentDeps:
         whatsapp_client=FakeWhatsAppClient(),  # type: ignore[arg-type]
         webhook_context=WebhookContextManager(),
         user_phone="+598 99 000 000",
-        user_name=None,
         contact_id=None,
         conversation_id=None,
     )
@@ -109,7 +108,6 @@ def ctx_factory(erp_client: httpx.AsyncClient) -> Callable[..., RunContext[Agent
             "whatsapp_client": FakeWhatsAppClient(),
             "webhook_context": WebhookContextManager(),
             "user_phone": "+598 99 000 000",
-            "user_name": None,
             "contact_id": None,
             "conversation_id": None,
             "conversation_language": "es",

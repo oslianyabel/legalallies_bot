@@ -55,7 +55,6 @@ def _build_deps() -> AgentDeps:
         db_services=None,  # type: ignore[arg-type]
         whatsapp_client=FakeWhatsAppClient(),  # type: ignore[arg-type]
         user_phone=TEST_PHONE,
-        user_name="Test User",
     )
 
 
