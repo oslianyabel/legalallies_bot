@@ -17,6 +17,7 @@ from chatbot.ai_agent.tools.services import (
     get_all_services,
     get_order_by_name,
     get_orders_by_user,
+    send_service_image,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ AGENT_TOOLS = [
     resolve_relative_date,
     WebSearchTool,
     get_all_services,
+    send_service_image,
     create_order,
     confirm_payment,
     get_order_by_name,

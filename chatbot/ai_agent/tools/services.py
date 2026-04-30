@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from pydantic_ai import RunContext
 
 from chatbot.ai_agent.dependencies import AgentDeps
-from chatbot.db.schema import PaymentStatus
+from chatbot.db.schema import PaymentStatus, services_table
+from chatbot.messaging.whatsapp import whatsapp_manager
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,11 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ServiceInfo:
-    code: str
+    code: str  # Internal use only — do NOT share with the user
     name: str
     description: str
     price: float
     payment_link: str
-    image: str | None
     active: bool
 
 
@@ -53,12 +53,18 @@ async def get_all_services(ctx: RunContext[AgentDeps]) -> list[ServiceInfo]:
     Use this tool when the user asks about available services, prices, or
     what the business offers.
 
+    IMPORTANT:
+    - The `code` field is for INTERNAL USE ONLY. Use it to call other tools
+      (e.g. create_order, send_service_image). Never display it to the user.
+    - Always show the `payment_link` to the user when they express interest
+      in a service so they can complete the payment.
+
     Args:
         ctx: Agent run context (injected automatically).
 
     Returns:
-        List of ServiceInfo with code, name, description, price, payment_link
-        and image URL for each active service.
+        List of ServiceInfo with name, description, price and payment_link
+        for each active service.
     """
     logger.info("[get_all_services] fetching active services")
     rows = await ctx.deps.db_services.get_active_services()
@@ -69,13 +75,54 @@ async def get_all_services(ctx: RunContext[AgentDeps]) -> list[ServiceInfo]:
             description=row.description,  # type: ignore[attr-defined]
             price=row.price,  # type: ignore[attr-defined]
             payment_link=row.payment_link,  # type: ignore[attr-defined]
-            image=row.image,  # type: ignore[attr-defined]
             active=row.active,  # type: ignore[attr-defined]
         )
         for row in rows
     ]
     logger.info("[get_all_services] returned %d services", len(result))
     return result
+
+
+async def send_service_image(
+    ctx: RunContext[AgentDeps],
+    service_code: str,
+    caption: str | None = None,
+) -> str:
+    """Send the image of a service to the current user via WhatsApp.
+
+    Use this tool when the user asks to see an image or photo of a service,
+    or when it would be helpful to show the service visually.
+
+    Args:
+        ctx: Agent run context (injected automatically).
+        service_code: The internal code of the service (from get_all_services).
+        caption: Optional caption to attach to the image.
+
+    Returns:
+        A string confirming the image was sent, or an error message.
+    """
+    logger.info(
+        "[send_service_image] service_code=%r user=%r",
+        service_code,
+        ctx.deps.user_phone,
+    )
+    row = await ctx.deps.db_services.database.fetch_one(
+        services_table.select().where(services_table.c.code == service_code)
+    )
+    if row is None:
+        return f"No se encontró el servicio con código '{service_code}'."
+    image_url: str | None = row.image  # type: ignore[attr-defined]
+    if not image_url:
+        return "Este servicio no tiene imagen disponible."
+    ok = await whatsapp_manager.send_image(
+        to=ctx.deps.user_phone,
+        image_url=image_url,
+        caption=caption,
+    )
+    if not ok:
+        return "No se pudo enviar la imagen en este momento. Inténtalo de nuevo."
+    logger.info("[send_service_image] image sent to %r", ctx.deps.user_phone)
+    return "Imagen enviada correctamente."
 
 
 async def create_order(
