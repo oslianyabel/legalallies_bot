@@ -6,11 +6,13 @@ from chatbot.api.utils.models import (
     CreateServiceRequest,
     Messages,
     Order,
+    Service,
     UpdateOrderStatusRequest,
+    UpdateServiceRequest,
     User,
 )
 from chatbot.api.utils.security import get_api_key
-from chatbot.db.schema import PaymentStatus
+from chatbot.db.schema import PaymentStatus, services_table
 from chatbot.db.services import services
 from chatbot.messaging.whatsapp import whatsapp_manager
 
@@ -46,6 +48,33 @@ async def get_all_orders():
 async def get_orders_by_user(phone: str):
     logger.info(f"Fetching orders for user: {phone}")
     return await services.get_user_orders(phone)
+
+
+@router.get("/services", response_model=list[Service])
+async def get_all_services():
+    logger.info("Fetching all services")
+    return await services.database.fetch_all(services_table.select())
+
+
+@router.patch("/services/{service_code}", response_model=Service)
+async def update_service(service_code: str, body: UpdateServiceRequest):
+    logger.info(f"Updating service: {service_code}")
+    update_data = body.model_dump(exclude_none=True)
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No fields provided to update",
+        )
+    updated = await services.update_service(service_code, **update_data)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service '{service_code}' not found or could not be updated",
+        )
+    service = await services.database.fetch_one(
+        services_table.select().where(services_table.c.code == service_code)
+    )
+    return service
 
 
 @router.post("/services", status_code=status.HTTP_201_CREATED)

@@ -54,6 +54,28 @@ class UpdateOrderStatusRequest(BaseModel):
     amount_remaining: float | None = None
 
 
+class Service(BaseModel):
+    code: str
+    name: str
+    description: str
+    price: float
+    payment_link: str
+    image: str | None = None
+    active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateServiceRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    payment_link: str | None = None
+    image: str | None = None
+    active: bool | None = None
+
+
 class Statistics(BaseModel):
     user_phone: str
     interactions: int
