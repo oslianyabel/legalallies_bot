@@ -129,4 +129,35 @@ async def update_order_status(order_name: str, body: UpdateOrderStatusRequest):
             f"Payment confirmation sent to {order.user_phone} for order {order_name}"
         )  # type: ignore[attr-defined]
 
+    elif body.status == PaymentStatus.REJECTED:
+        message = (
+            f"❌ Hemos revisado tu comprobante de pago para la orden *{order_name}* "
+            f"y lamentablemente no ha podido ser verificado.\n\n"
+            f"Esto puede deberse a que el comprobante no es legible, el monto no coincide "
+            f"o la transferencia no se ha recibido correctamente.\n\n"
+            f"Por favor, revisa el estado de tu pago y vuelve a enviarnos el comprobante. "
+            f"Si necesitas ayuda, nuestro equipo está a tu disposición."
+        )
+        await whatsapp_manager.send_text(order.user_phone, message)  # type: ignore[attr-defined]
+        logger.info(
+            f"Payment rejection notice sent to {order.user_phone} for order {order_name}"
+        )  # type: ignore[attr-defined]
+
+    elif body.status == PaymentStatus.INCOMPLETE:
+        amount = (
+            f"{order.amount_remaining:,.2f}"
+            if order.amount_remaining is not None
+            else "pendiente"
+        )  # type: ignore[attr-defined]
+        message = (
+            f"⚠️ Hemos recibido un pago parcial para tu orden *{order_name}*.\n\n"
+            f"El monto pendiente por abonar es de *{amount}*.\n\n"
+            f"Por favor, completa el pago restante para que podamos activar tu servicio. "
+            f"Si tienes alguna duda, no dudes en escribirnos."
+        )
+        await whatsapp_manager.send_text(order.user_phone, message)  # type: ignore[attr-defined]
+        logger.info(
+            f"Incomplete payment notice sent to {order.user_phone} for order {order_name}"
+        )  # type: ignore[attr-defined]
+
     return order
